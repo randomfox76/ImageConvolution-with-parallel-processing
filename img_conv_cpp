@@ -1,0 +1,64 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+#include <opencv2/opencv.hpp>
+
+#define WIDTH 512
+#define HEIGHT 512
+
+int kernel[3][3] = {
+  { 1, 2, 1 },
+  { 0, 0, 0 },
+  { -1, -2, -1 }
+};
+
+void ImageConvolution(cv::Mat& InputImage, int OutputImage[WIDTH][HEIGHT]) {
+  #pragma omp parallel for
+  for (int y = 1; y < HEIGHT - 1; y++) {
+    for (int x = 1; x < WIDTH - 1; x++) {
+      int sum = 0;
+      for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+          sum += InputImage.at<uchar>(y + i, x + j) * kernel[i + 1][j + 1];
+        }
+      }
+      OutputImage[y][x] = sum;
+    }
+  }
+}
+
+int main() {
+  // Load the input image
+  cv::Mat inputMat = cv::imread("Input_image.jpg", 0);
+
+  // Check if the image was loaded successfully
+  if (inputMat.empty()) {
+    std::cerr << "Error: Input image not found" << std::endl;
+    return 1;
+  }
+
+  // Convert the input image to grayscale if necessary
+  if (inputMat.channels() == 3) {
+    cv::cvtColor(inputMat, inputMat, cv::COLOR_BGR2GRAY);
+  }
+
+  int OutputImage[WIDTH][HEIGHT];
+
+  // Perform image convolution
+  ImageConvolution(inputMat,OutputImage);
+
+  // Save the resulting OutputImage using OpenCV
+  cv::Mat outputMat(HEIGHT, WIDTH, CV_8U);
+  for (int y = 0; y < HEIGHT; y++) {
+    for (int x = 0; x < WIDTH; x++) {
+      outputMat.at<uchar>(y, x) = static_cast<uchar>(OutputImage[y][x]);
+    }
+  }
+  cv::imwrite("output_image.jpg", outputMat);
+
+  // Display the output using OpenCV
+  cv::imshow("Output Image", outputMat);
+  cv::waitKey(0);
+
+  return 0;
+}
